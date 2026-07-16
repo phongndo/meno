@@ -1,0 +1,67 @@
+amends "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.51.0/hk@1.51.0#/Builtins.pkl"
+
+local formatFiles = List(
+  "*.css",
+  "*.cts",
+  "*.html",
+  "*.js",
+  "*.json",
+  "*.jsonc",
+  "*.md",
+  "*.mjs",
+  "*.mts",
+  "*.ts",
+  "*.yaml",
+  "*.yml"
+)
+
+local codeFiles = List("*.cjs", "*.cts", "*.js", "*.mjs", "*.mts", "*.ts")
+
+local linters = new Mapping<String, Step> {
+  ["actionlint"] = Builtins.actionlint
+  ["nixfmt"] {
+    glob = "*.nix"
+    check = "nixfmt --check {{files}}"
+    fix = "nixfmt {{files}}"
+    check_first = true
+  }
+  ["oxfmt"] {
+    glob = formatFiles
+    check = "pnpm exec oxfmt --check {{files}}"
+    fix = "pnpm exec oxfmt --write {{files}}"
+    check_first = true
+  }
+  ["oxlint"] {
+    glob = codeFiles
+    check = "pnpm exec oxlint {{files}}"
+    fix = "pnpm exec oxlint --fix {{files}}"
+    check_first = true
+  }
+  ["typecheck"] {
+    glob = List("*.ts", "*.cts", "*.mts", "package.json", "pnpm-lock.yaml", "tsconfig.json")
+    check = "pnpm typecheck"
+  }
+}
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps = linters
+  }
+  ["pre-push"] {
+    steps {
+      ["project-check"] {
+        check = "pnpm check && pnpm build"
+      }
+    }
+  }
+  ["check"] {
+    steps = linters
+  }
+  ["fix"] {
+    fix = true
+    steps = linters
+  }
+}

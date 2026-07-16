@@ -1,7 +1,31 @@
+# Dependencies
 node_modules/
+
+# Build and packaging output
 dist/
+out/
+release/
+.vite/
+result
+result-*
+*.tsbuildinfo
+
+# Test output
+coverage/
+
+# Local caches and logs
+.cache/
+.direnv/
+*.log
+pnpm-debug.log*
+
+# Environment and local settings
 .env
 .env.*
-!.env.example
-*.log
+hk.local.pkl
+
+# Editors and operating systems
 .DS_Store
+.idea/
+*.swp
+*.swo
