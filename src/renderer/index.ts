@@ -1,5 +1,11 @@
 import { Store } from "@tanstack/store";
-import type { ChatEvent, ChatModel, ChatResponseEndReason, MenoApi } from "../shared/chat.js";
+import type {
+  ChatEvent,
+  ChatModel,
+  ChatResponseEndReason,
+  MenoApi,
+  ThinkingLevel,
+} from "../shared/chat.js";
 import { icons, renderIcon } from "./icons.js";
 import { renderMarkdown } from "./markdown.js";
 
@@ -8,6 +14,11 @@ declare global {
     meno: MenoApi;
   }
 }
+
+document.documentElement.classList.toggle(
+  "platform-macos",
+  navigator.platform.toLocaleLowerCase().includes("mac"),
+);
 
 interface MessageView {
   article: HTMLElement;
@@ -18,6 +29,10 @@ interface MessageView {
 }
 
 const MODEL_STORAGE_KEY = "meno:selected-model";
+const SIDEBAR_STORAGE_KEY = "meno:sidebar-collapsed";
+const SIDEBAR_WIDTH_STORAGE_KEY = "meno:sidebar-width";
+const THINKING_STORAGE_PREFIX = "meno:thinking-level";
+const thinkingLevels: ThinkingLevel[] = ["off", "low", "medium", "high"];
 
 const byId = <T extends HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -25,11 +40,13 @@ const byId = <T extends HTMLElement>(id: string): T => {
   return element as T;
 };
 
+const appShell = byId<HTMLElement>("appShell");
 const composerForm = byId<HTMLFormElement>("composerForm");
 const composerInput = byId<HTMLTextAreaElement>("composerInput");
 const conversation = byId<HTMLElement>("conversation");
 const chatListItem = byId<HTMLButtonElement>("chatListItem");
 const conversationTitle = byId<HTMLElement>("conversationTitle");
+const effortButton = byId<HTMLButtonElement>("effortButton");
 const emptyCopy = byId<HTMLElement>("emptyCopy");
 const emptyState = byId<HTMLElement>("emptyState");
 const emptyTitle = byId<HTMLElement>("emptyTitle");
@@ -45,6 +62,8 @@ const sendButton = byId<HTMLButtonElement>("sendButton");
 const sendButtonIcon = byId<HTMLElement>("sendButtonIcon");
 const sendButtonLabel = byId<HTMLElement>("sendButtonLabel");
 const settingsButton = byId<HTMLButtonElement>("settingsButton");
+const sidebarResizeHandle = byId<HTMLElement>("sidebarResizeHandle");
+const sidebarToggle = byId<HTMLButtonElement>("sidebarToggle");
 const statusText = byId<HTMLElement>("statusText");
 const threadSearch = byId<HTMLInputElement>("threadSearch");
 
@@ -57,6 +76,64 @@ let initialized = false;
 let isAborting = false;
 let isBusy = false;
 let selectedModelKey: string | undefined;
+let thinkingLevel: ThinkingLevel = "off";
+let sidebarCollapsed = localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+let sidebarWidth = Math.min(
+  420,
+  Math.max(180, Number(localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)) || 220),
+);
+
+const renderSidebarState = (): void => {
+  appShell.style.setProperty("--sidebar-width", `${sidebarWidth}px`);
+  sidebarResizeHandle.setAttribute("aria-valuenow", String(sidebarWidth));
+  appShell.classList.toggle("sidebar-collapsed", sidebarCollapsed);
+  sidebarToggle.setAttribute("aria-expanded", String(!sidebarCollapsed));
+  sidebarToggle.setAttribute(
+    "aria-label",
+    sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar",
+  );
+};
+
+const toggleSidebar = (): void => {
+  sidebarCollapsed = !sidebarCollapsed;
+  localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarCollapsed));
+  renderSidebarState();
+};
+
+const thinkingStorageKey = (modelKey: string): string => `${THINKING_STORAGE_PREFIX}:${modelKey}`;
+
+const storedThinkingLevel = (modelKey: string): ThinkingLevel => {
+  const stored = localStorage.getItem(thinkingStorageKey(modelKey)) as ThinkingLevel | null;
+  return stored && thinkingLevels.includes(stored) ? stored : "medium";
+};
+
+const setThinkingLevel = (nextLevel: ThinkingLevel): void => {
+  if (controlsPending || isBusy || !selectedModelKey) return;
+  const model = availableModels.find((item) => item.key === selectedModelKey);
+  if (!model?.reasoning) return;
+
+  const previousLevel = thinkingLevel;
+  thinkingLevel = nextLevel;
+  controlsPending = true;
+  refreshControls();
+  void window.meno.chat
+    .setThinkingLevel(nextLevel)
+    .then(() => localStorage.setItem(thinkingStorageKey(selectedModelKey!), nextLevel))
+    .catch((error: unknown) => {
+      thinkingLevel = previousLevel;
+      showError(errorMessage(error));
+    })
+    .finally(() => {
+      controlsPending = false;
+      refreshControls();
+      composerInput.focus();
+    });
+};
+
+const cycleThinkingLevel = (): void => {
+  const currentIndex = thinkingLevels.indexOf(thinkingLevel);
+  setThinkingLevel(thinkingLevels[(currentIndex + 1) % thinkingLevels.length]!);
+};
 
 const providerNames: Record<string, string> = {
   anthropic: "Anthropic",
@@ -113,6 +190,9 @@ const refreshControls = (): void => {
   composerInput.disabled = !canChat || isBusy || locked;
   composerInput.placeholder = canChat ? "Message Meno" : "Connect a model to start chatting";
   modelTrigger.disabled = !canChat || isBusy || locked;
+  effortButton.disabled = !canChat || isBusy || locked;
+  effortButton.hidden = !availableModels.find((model) => model.key === selectedModelKey)?.reasoning;
+  effortButton.textContent = thinkingLevel;
   if (modelTrigger.disabled) modelPopover.hidden = true;
   newChatButton.disabled = !canChat || isBusy || locked;
   sendButton.disabled = !canChat || locked || (!isBusy && !composerInput.value.trim());
@@ -402,8 +482,11 @@ modelList.addEventListener("click", (event) => {
   refreshControls();
   void window.meno.chat
     .selectModel(nextModelKey)
-    .then(() => {
+    .then(async () => {
       selectedModelKey = nextModelKey;
+      const model = availableModels.find((item) => item.key === nextModelKey);
+      thinkingLevel = model?.reasoning ? storedThinkingLevel(nextModelKey) : "off";
+      if (model?.reasoning) await window.meno.chat.setThinkingLevel(thinkingLevel);
       localStorage.setItem(MODEL_STORAGE_KEY, nextModelKey);
       renderModels();
     })
@@ -441,6 +524,50 @@ settingsButton.addEventListener("click", () => {
   if (!modelTrigger.disabled) setModelPopoverOpen(true);
 });
 
+sidebarToggle.addEventListener("click", toggleSidebar);
+effortButton.addEventListener("click", cycleThinkingLevel);
+document.addEventListener("keydown", (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === "b") {
+    event.preventDefault();
+    toggleSidebar();
+    return;
+  }
+  if (
+    event.shiftKey &&
+    event.key === "Tab" &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    effortButton.hidden === false
+  ) {
+    event.preventDefault();
+    cycleThinkingLevel();
+  }
+});
+
+sidebarResizeHandle.addEventListener("pointerdown", (event) => {
+  if (sidebarCollapsed) return;
+  sidebarResizeHandle.setPointerCapture(event.pointerId);
+  appShell.classList.add("is-resizing");
+});
+sidebarResizeHandle.addEventListener("pointermove", (event) => {
+  if (!sidebarResizeHandle.hasPointerCapture(event.pointerId)) return;
+  const maximumWidth = Math.min(420, window.innerWidth - 480);
+  sidebarWidth = Math.max(180, Math.min(maximumWidth, event.clientX));
+  renderSidebarState();
+});
+sidebarResizeHandle.addEventListener("pointerup", (event) => {
+  if (!sidebarResizeHandle.hasPointerCapture(event.pointerId)) return;
+  sidebarResizeHandle.releasePointerCapture(event.pointerId);
+  appShell.classList.remove("is-resizing");
+  localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
+});
+sidebarResizeHandle.addEventListener("dblclick", () => {
+  sidebarWidth = 220;
+  localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
+  renderSidebarState();
+});
+
 newChatButton.addEventListener("click", () => {
   if (isBusy || controlsPending || !hasModel()) return;
   controlsPending = true;
@@ -467,7 +594,15 @@ const initialize = async (): Promise<void> => {
     const bootstrap = await window.meno.chat.bootstrap(preferredModelKey);
     availableModels = bootstrap.models;
     selectedModelKey = bootstrap.selectedModelKey;
+    const selectedModel = availableModels.find((model) => model.key === selectedModelKey);
+    thinkingLevel =
+      selectedModel?.reasoning && selectedModelKey
+        ? storedThinkingLevel(selectedModelKey)
+        : bootstrap.thinkingLevel;
     if (selectedModelKey) localStorage.setItem(MODEL_STORAGE_KEY, selectedModelKey);
+    if (selectedModel?.reasoning && thinkingLevel !== bootstrap.thinkingLevel) {
+      await window.meno.chat.setThinkingLevel(thinkingLevel);
+    }
     initialized = true;
     renderModels();
     refreshControls();
@@ -488,6 +623,8 @@ renderIcon(byId("chatListIcon"), icons.message, 13);
 renderIcon(byId("settingsIcon"), icons.settings, 16);
 renderIcon(byId("modelChevronIcon"), icons.chevronDown, 12);
 renderIcon(byId("modelSearchIcon"), icons.search, 14);
+renderIcon(byId("sidebarToggleIcon"), icons.panelLeft, 16);
+renderSidebarState();
 resizeComposer();
 refreshControls();
 void initialize();

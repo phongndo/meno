@@ -47,6 +47,7 @@ button,
 input,
 select,
 textarea {
+  -webkit-app-region: no-drag;
   color: inherit;
   font: inherit;
 }
@@ -73,12 +74,43 @@ textarea:disabled {
 
 .sidebar {
   display: flex;
-  width: 220px;
-  flex: 0 0 220px;
+  width: var(--sidebar-width, 220px);
+  flex: 0 0 var(--sidebar-width, 220px);
   flex-direction: column;
-  padding: 12px 10px 10px;
+  padding: 48px 10px 10px;
+  overflow: hidden;
   background: var(--sidebar);
   border-right: 1px solid var(--border);
+}
+
+.app-shell.sidebar-collapsed .sidebar {
+  width: 0;
+  flex-basis: 0;
+  padding-right: 0;
+  padding-left: 0;
+  border-color: transparent;
+}
+
+.sidebar-resize-handle {
+  width: 5px;
+  flex: 0 0 5px;
+  margin-right: -5px;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.sidebar-resize-handle:hover,
+.app-shell.is-resizing .sidebar-resize-handle {
+  background: #d4d4d8;
+}
+
+.app-shell.sidebar-collapsed .sidebar-resize-handle {
+  display: none;
+}
+
+.app-shell.is-resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .new-chat-button {
@@ -216,13 +248,36 @@ textarea:disabled {
 
 .chat-header {
   display: flex;
+  -webkit-app-region: drag;
   height: 44px;
   flex: 0 0 auto;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 20px;
   padding: 0 18px;
   border-bottom: 1px solid var(--border);
+}
+
+.platform-macos .app-shell.sidebar-collapsed .chat-header {
+  padding-left: 88px;
+}
+
+.sidebar-toggle {
+  display: grid;
+  -webkit-app-region: no-drag;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+}
+
+.sidebar-toggle:hover {
+  color: #18181b;
+  background: #f0f0f0;
 }
 
 .status {
@@ -443,7 +498,7 @@ textarea:disabled {
 .composer {
   display: grid;
   min-height: 48px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: end;
   gap: 5px 8px;
   padding: 8px 6px 6px 12px;
@@ -604,6 +659,28 @@ textarea:disabled {
   text-align: center;
 }
 
+.effort-button {
+  height: 28px;
+  padding: 0 7px;
+  color: var(--muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.effort-button:hover:not(:disabled) {
+  color: #18181b;
+  background: var(--sidebar);
+}
+
+.effort-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .send-button {
   display: grid;
   width: 34px;
@@ -666,7 +743,9 @@ textarea:disabled {
 }
 
 @media (max-width: 760px) {
-  .sidebar {
+  .sidebar,
+  .sidebar-resize-handle,
+  .sidebar-toggle {
     display: none;
   }
 

@@ -14,6 +14,7 @@ import type {
   ChatModel,
   ChatResponseEndReason,
   SendMessageRequest,
+  ThinkingLevel,
 } from "../../shared/chat.js";
 
 const TUTOR_SYSTEM_PROMPT = `You are Meno, a helpful learning assistant. Explain ideas clearly, ask clarifying questions when needed, and be honest about uncertainty.`;
@@ -51,6 +52,7 @@ export class PiChatService {
   #initialization?: Promise<void>;
   #modelRuntime?: ModelRuntime;
   #selectedModelKey?: string;
+  #thinkingLevel: ThinkingLevel = "off";
   #session?: PiSession;
   #unsubscribe?: () => void;
 
@@ -71,6 +73,7 @@ export class PiChatService {
 
     return {
       models: this.#serializedModels(),
+      thinkingLevel: this.#thinkingLevel,
       ...(this.#selectedModelKey ? { selectedModelKey: this.#selectedModelKey } : {}),
     };
   }
@@ -82,13 +85,26 @@ export class PiChatService {
     const model = this.#models.get(key);
     if (!model) throw new Error("That model is no longer available.");
 
+    this.#thinkingLevel = model.reasoning ? "medium" : "off";
     if (!this.#session) {
       await this.#createSession(model);
     } else {
       await this.#session.setModel(model);
+      this.#session.setThinkingLevel(this.#thinkingLevel);
     }
 
     this.#selectedModelKey = key;
+  }
+
+  async setThinkingLevel(level: ThinkingLevel): Promise<void> {
+    await this.#requireInitialization();
+    if (this.#activeResponse) throw new Error("Wait for the current response to finish.");
+    const model = this.#selectedModelKey ? this.#models.get(this.#selectedModelKey) : undefined;
+    if (!model?.reasoning && level !== "off")
+      throw new Error("This model does not support reasoning.");
+    if (!this.#session) throw new Error("No model session is available.");
+    this.#session.setThinkingLevel(level);
+    this.#thinkingLevel = level;
   }
 
   async send(request: SendMessageRequest): Promise<void> {
@@ -176,6 +192,7 @@ export class PiChatService {
     if (!initialModel) return;
 
     this.#selectedModelKey = modelKey(initialModel);
+    this.#thinkingLevel = initialModel.reasoning ? "medium" : "off";
     await this.#createSession(initialModel);
   }
 
@@ -214,7 +231,7 @@ export class PiChatService {
       resourceLoader,
       sessionManager: SessionManager.inMemory(this.#cwd),
       settingsManager,
-      thinkingLevel: model.reasoning ? "medium" : "off",
+      thinkingLevel: this.#thinkingLevel,
     });
 
     this.#session = session;

@@ -9,6 +9,16 @@ export const createMainWindow = async (): Promise<BrowserWindow> => {
     minHeight: 560,
     backgroundColor: "#ffffff",
     show: false,
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "hidden",
+    ...(process.platform === "darwin"
+      ? { trafficLightPosition: { x: 12, y: 14 } }
+      : {
+          titleBarOverlay: {
+            color: "#ffffff",
+            height: 44,
+            symbolColor: "#52525b",
+          },
+        }),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

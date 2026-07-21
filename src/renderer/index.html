@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <div class="app-shell" id="appShell">
       <aside class="sidebar">
         <button class="new-chat-button" id="newChatButton" type="button">
           <span id="newChatIcon" aria-hidden="true"></span>
@@ -43,9 +43,26 @@
           <span id="settingsIcon" aria-hidden="true"></span>
         </button>
       </aside>
+      <div
+        class="sidebar-resize-handle"
+        id="sidebarResizeHandle"
+        role="separator"
+        aria-label="Resize sidebar"
+        aria-orientation="vertical"
+      ></div>
 
       <main class="chat-panel">
         <header class="chat-header">
+          <button
+            class="sidebar-toggle"
+            id="sidebarToggle"
+            type="button"
+            aria-label="Collapse sidebar"
+            aria-expanded="true"
+            title="Toggle sidebar (⌘B)"
+          >
+            <span id="sidebarToggleIcon" aria-hidden="true"></span>
+          </button>
           <span class="status" id="statusText" role="status">Starting pi…</span>
         </header>
 
@@ -95,6 +112,15 @@
                 <div class="model-list" id="modelList" role="listbox"></div>
               </div>
             </div>
+            <button
+              class="effort-button"
+              id="effortButton"
+              type="button"
+              title="Change reasoning level (Shift+Tab)"
+              hidden
+            >
+              Medium
+            </button>
             <button class="send-button" id="sendButton" type="submit" disabled>
               <span id="sendButtonIcon" aria-hidden="true">↑</span>
               <span class="sr-only" id="sendButtonLabel">Send message</span>

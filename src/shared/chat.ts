@@ -4,6 +4,7 @@ export const CHAT_CHANNELS = {
   event: "meno:chat:event",
   newConversation: "meno:chat:new-conversation",
   selectModel: "meno:chat:select-model",
+  setThinkingLevel: "meno:chat:set-thinking-level",
   send: "meno:chat:send",
 } as const;
 
@@ -16,9 +17,12 @@ export interface ChatModel {
   reasoning: boolean;
 }
 
+export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+
 export interface ChatBootstrap {
   models: ChatModel[];
   selectedModelKey?: string;
+  thinkingLevel: ThinkingLevel;
 }
 
 export interface SendMessageRequest {
@@ -51,6 +55,7 @@ export interface ChatApi {
   newConversation(): Promise<void>;
   onEvent(listener: (event: ChatEvent) => void): () => void;
   selectModel(modelKey: string): Promise<void>;
+  setThinkingLevel(level: ThinkingLevel): Promise<void>;
   send(request: SendMessageRequest): Promise<void>;
 }
 

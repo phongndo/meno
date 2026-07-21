@@ -1,6 +1,11 @@
 import { ipcMain } from "electron";
 
-import { CHAT_CHANNELS, type ChatBootstrap, type SendMessageRequest } from "../../shared/chat.js";
+import {
+  CHAT_CHANNELS,
+  type ChatBootstrap,
+  type SendMessageRequest,
+  type ThinkingLevel,
+} from "../../shared/chat.js";
 import type { PiChatService } from "../services/PiChatService.js";
 
 const MAX_MESSAGE_LENGTH = 100_000;
@@ -19,6 +24,23 @@ const requiredString = (value: unknown, name: string, maxLength: number): string
     throw new TypeError(`${name} must be a non-empty string.`);
   }
   return value;
+};
+
+const thinkingLevels = new Set<ThinkingLevel>([
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+]);
+
+const parseThinkingLevel = (value: unknown): ThinkingLevel => {
+  if (typeof value !== "string" || !thinkingLevels.has(value as ThinkingLevel)) {
+    throw new TypeError("Invalid reasoning level.");
+  }
+  return value as ThinkingLevel;
 };
 
 const parseSendRequest = (value: unknown): SendMessageRequest => {
@@ -45,6 +67,9 @@ export const registerChatIpc = (chatService: PiChatService): (() => void) => {
       requiredString(modelKey, "Model identifier", MAX_IDENTIFIER_LENGTH),
     );
   });
+  ipcMain.handle(CHAT_CHANNELS.setThinkingLevel, async (_event, level: unknown) => {
+    await chatService.setThinkingLevel(parseThinkingLevel(level));
+  });
   ipcMain.handle(CHAT_CHANNELS.send, async (_event, request: unknown) => {
     await chatService.send(parseSendRequest(request));
   });
@@ -58,6 +83,7 @@ export const registerChatIpc = (chatService: PiChatService): (() => void) => {
   return () => {
     ipcMain.removeHandler(CHAT_CHANNELS.bootstrap);
     ipcMain.removeHandler(CHAT_CHANNELS.selectModel);
+    ipcMain.removeHandler(CHAT_CHANNELS.setThinkingLevel);
     ipcMain.removeHandler(CHAT_CHANNELS.send);
     ipcMain.removeHandler(CHAT_CHANNELS.abort);
     ipcMain.removeHandler(CHAT_CHANNELS.newConversation);

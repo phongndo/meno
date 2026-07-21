@@ -5,6 +5,8 @@ import { registerChatIpc } from "./ipc/registerChatIpc.js";
 import { PiChatService } from "./services/PiChatService.js";
 import { createMainWindow } from "./window/createMainWindow.js";
 
+app.setName("Meno");
+
 let chatService: PiChatService | undefined;
 let mainWindow: BrowserWindow | undefined;
 let unregisterChatIpc: (() => void) | undefined;

@@ -5,6 +5,7 @@ type ChatBootstrap = import("../shared/chat.js").ChatBootstrap;
 type ChatEvent = import("../shared/chat.js").ChatEvent;
 type IpcRendererEvent = import("electron").IpcRendererEvent;
 type SendMessageRequest = import("../shared/chat.js").SendMessageRequest;
+type ThinkingLevel = import("../shared/chat.js").ThinkingLevel;
 
 const channels = {
   abort: "meno:chat:abort",
@@ -12,6 +13,7 @@ const channels = {
   event: "meno:chat:event",
   newConversation: "meno:chat:new-conversation",
   selectModel: "meno:chat:select-model",
+  setThinkingLevel: "meno:chat:set-thinking-level",
   send: "meno:chat:send",
 } as const;
 
@@ -27,6 +29,8 @@ const chatApi: ChatApi = {
   },
   selectModel: (modelKey: string) =>
     ipcRenderer.invoke(channels.selectModel, modelKey) as Promise<void>,
+  setThinkingLevel: (level: ThinkingLevel) =>
+    ipcRenderer.invoke(channels.setThinkingLevel, level) as Promise<void>,
   send: (request: SendMessageRequest) =>
     ipcRenderer.invoke(channels.send, request) as Promise<void>,
 };
