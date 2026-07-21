@@ -7,6 +7,7 @@ export const createMainWindow = async (): Promise<BrowserWindow> => {
     height: 760,
     minWidth: 760,
     minHeight: 560,
+    backgroundColor: "#ffffff",
     show: false,
     webPreferences: {
       contextIsolation: true,

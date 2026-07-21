@@ -1,6 +1,6 @@
 # Meno
 
-A minimal Electron and TypeScript scaffold. It intentionally contains no product functionality.
+A minimal Electron chat foundation powered by the pi SDK. It includes streamed responses, authenticated model selection, a sidebar, and a composer.
 
 ## Tooling
 
@@ -32,7 +32,18 @@ resources/
 scripts/
 ```
 
-The main, preload, renderer, and shared boundaries follow the layout used by T3 Code and other Electron applications.
+The main, preload, renderer, and shared boundaries follow the layout used by T3 Code and other Electron applications. Pi runs only in the main process; the sandboxed renderer receives a narrow, typed IPC API from the preload.
+
+## Model setup
+
+Meno reads models and credentials configured in pi's default agent directory (`~/.pi/agent`). Authenticate a provider before starting the app:
+
+```bash
+pi
+/login
+```
+
+Environment-based provider API keys supported by pi also work. The current learning chat is in-memory and starts with tools, extensions, skills, and project context disabled.
 
 ## Development shell
 

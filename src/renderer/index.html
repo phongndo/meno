@@ -7,11 +7,105 @@
       content="default-src 'self'; script-src 'self'; style-src 'self'"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
     <title>Meno</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div id="app"></div>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <button class="new-chat-button" id="newChatButton" type="button">
+          <span id="newChatIcon" aria-hidden="true"></span>
+          New chat
+        </button>
+
+        <label class="thread-search">
+          <span id="threadSearchIcon" aria-hidden="true"></span>
+          <span class="sr-only">Search chats</span>
+          <input id="threadSearch" type="search" placeholder="Search chats" autocomplete="off" />
+        </label>
+
+        <div class="chat-list">
+          <p>Chats</p>
+          <button class="chat-list-item" id="chatListItem" type="button" aria-current="page">
+            <span class="chat-list-icon" id="chatListIcon" aria-hidden="true"></span>
+            <span id="conversationTitle">New conversation</span>
+          </button>
+        </div>
+
+        <button
+          class="settings-button"
+          id="settingsButton"
+          type="button"
+          aria-label="Model settings"
+          title="Model settings"
+        >
+          <span id="settingsIcon" aria-hidden="true"></span>
+        </button>
+      </aside>
+
+      <main class="chat-panel">
+        <header class="chat-header">
+          <span class="status" id="statusText" role="status">Starting pi…</span>
+        </header>
+
+        <section class="conversation" id="conversation" aria-label="Conversation">
+          <div class="conversation-content">
+            <div class="empty-state" id="emptyState">
+              <h1 id="emptyTitle">Start a conversation</h1>
+              <p id="emptyCopy">Ask a question or choose a topic you want to learn.</p>
+            </div>
+            <div class="messages" id="messages" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <footer class="composer-area">
+          <form class="composer" id="composerForm">
+            <textarea
+              id="composerInput"
+              rows="1"
+              maxlength="100000"
+              placeholder="Message Meno"
+              aria-label="Message Meno"
+              disabled
+            ></textarea>
+            <div class="model-picker">
+              <button
+                class="model-trigger"
+                id="modelTrigger"
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                disabled
+              >
+                <span id="modelTriggerLabel">Loading models…</span>
+                <span class="model-chevron" id="modelChevronIcon" aria-hidden="true"></span>
+              </button>
+              <div class="model-popover" id="modelPopover" hidden>
+                <label class="model-search">
+                  <span id="modelSearchIcon" aria-hidden="true"></span>
+                  <span class="sr-only">Search models</span>
+                  <input
+                    id="modelSearch"
+                    type="search"
+                    placeholder="Search models…"
+                    autocomplete="off"
+                  />
+                </label>
+                <div class="model-list" id="modelList" role="listbox"></div>
+              </div>
+            </div>
+            <button class="send-button" id="sendButton" type="submit" disabled>
+              <span id="sendButtonIcon" aria-hidden="true">↑</span>
+              <span class="sr-only" id="sendButtonLabel">Send message</span>
+            </button>
+          </form>
+          <p>Enter to send · Shift + Enter for a new line</p>
+        </footer>
+      </main>
+    </div>
+
+    <div class="error-banner" id="errorBanner" role="alert" hidden></div>
     <script type="module" src="./index.js"></script>
   </body>
 </html>
